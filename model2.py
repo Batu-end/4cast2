@@ -4,7 +4,6 @@ from tensorflow.keras.layers import (
     AdditiveAttention, Dense, Flatten, Permute, Reshape, Multiply
 )
 from tensorflow.keras.models import Model
-from tensorflow.keras.layers import Input, LSTM, AdditiveAttention, Permute, Reshape, Multiply, Dense, Flatten
 from sklearn.preprocessing import MinMaxScaler
 import tensorflow as tf
 import keras
@@ -12,8 +11,6 @@ import yfinance as yf
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
-from keras.models import Sequential
-from keras.layers import LSTM, Dense, Dropout, AdditiveAttention, Permute, Reshape, Multiply, BatchNormalization
 
 
 print('TensorFlow version:', tf.__version__)
