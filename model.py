@@ -12,6 +12,10 @@ df = pd.read_csv(data)
 df = df.drop(columns=['Lag'])
 scaler = MinMaxScaler()
 
+#########################
+## CHATGPT SUGGESTIONS ##
+#########################
+
 # Assuming the last column is the target variable
 X = df.iloc[:, :-1].values
 y = df.iloc[:, -1].values

@@ -15,14 +15,21 @@ import matplotlib.pyplot as plt
 
 print('TensorFlow version:', tf.__version__)
 
-loaded_data = pd.read_csv('DataCleaned.csv')
+loaded_data = pd.read_csv('updated_dataset.csv')
 
-removed_date_data = loaded_data.drop(columns=['Date'])
+features = ['Close', 'Open', 'Range', 'MA20', 'MA50']
 
+removed_date_data = loaded_data.drop(columns=['Day'])
+removed_date_data['Return'] = removed_date_data['Close'].pct_change()
+removed_date_data = removed_date_data.dropna()
+
+close_scaler = MinMaxScaler(feature_range=(0, 1))
+removed_date_data['Close'] = close_scaler.fit_transform(
+    removed_date_data['Close'].values.reshape(-1, 1)
+)
 
 scaler = MinMaxScaler(feature_range=(0, 1))
-data_scaled = scaler.fit_transform(
-    removed_date_data['Close'].values.reshape(-1, 1))
+data_scaled = scaler.fit_transform(removed_date_data[features])
 
 X = []
 y = []
@@ -30,8 +37,8 @@ y = []
 sequence_length = 100
 
 for i in range(sequence_length, len(data_scaled)):
-    X.append(data_scaled[i-sequence_length:i, 0])
-    y.append(data_scaled[i, 0])
+    X.append(data_scaled[i-sequence_length:i])  # shape: (sequence_length, num_features)
+    y.append(removed_date_data['Return'].values[i])  # use 'Return' instead of 'Close'
 
 train_size = int(len(X) * 0.8)
 test_size = len(X) - train_size
@@ -40,10 +47,10 @@ X_train, X_test = np.array(X[:train_size]), np.array(X[train_size:])
 y_train, y_test = np.array(y[:train_size]), np.array(y[train_size:])
 
 X_train, y_train = np.array(X_train), np.array(y_train)
-X_train = np.reshape(X_train, (X_train.shape[0], X_train.shape[1], 1))
+X_train = np.reshape(X_train, (X_train.shape[0], X_train.shape[1], X_train.shape[2]))
 
 
-input_layer = Input(shape=(X_train.shape[1], 1))
+input_layer = Input(shape=(X_train.shape[1], X_train.shape[2]))
 
 # First LSTM layer
 x = LSTM(50, return_sequences=True)(input_layer)
@@ -75,7 +82,7 @@ early_stopping = keras.callbacks.EarlyStopping(
     monitor='val_loss', patience=10)
 csv_logger = keras.callbacks.CSVLogger(
     'training_log.csv')
-history = model.fit(X_train, y_train, epochs=100,
+history = model.fit(X_train, y_train, epochs=20,
                     batch_size=25, validation_split=0.2)
 
 # Convert X_test and y_test to Numpy arrays if they are not already
@@ -84,7 +91,7 @@ y_test = np.array(y_test)
 
 # Ensure X_test is reshaped similarly to how X_train was reshaped
 # This depends on how you preprocessed the training data
-X_test = np.reshape(X_test, (X_test.shape[0], X_test.shape[1], 1))
+X_test = np.reshape(X_test, (X_test.shape[0], X_test.shape[1], X_test.shape[2]))
 
 # Now evaluate the model on the test data
 test_loss = model.evaluate(X_test, y_test)
@@ -93,9 +100,22 @@ print("Test Loss: ", test_loss)
 # Making predictions
 y_pred = model.predict(X_test)
 
-# Calculating MAE and RMSE
-mae = mean_absolute_error(y_test, y_pred)
-rmse = root_mean_squared_error(y_test, y_pred, squared=False)
+last_known_price = removed_date_data['Close'].values[-len(y_test)-1]
 
-print("Mean Absolute Error: ", mae)
-print("Root Mean Square Error: ", rmse)
+predicted_prices = [last_known_price]
+
+for ret in y_pred.flatten():
+    next_price = predicted_prices[-1] * (1 + ret)
+    predicted_prices.append(next_price)
+
+predicted_prices = predicted_prices[1:]
+
+# Plot
+plt.figure(figsize=(15, 6))
+plt.plot(removed_date_data['Close'].values[-len(y_test):], label='Actual Close Price', color='blue')
+plt.plot(predicted_prices, label='Predicted Close Price', color='orange')
+plt.legend()
+plt.title("Actual vs Predicted Close Prices (Return Prediction)")
+plt.xlabel("Time Steps")
+plt.ylabel("Price")
+plt.show()
