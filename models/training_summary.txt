@@ -1,0 +1,5 @@
+Real MAE: $18.95
+Real RMSE: $25.69
+Train samples: 2936
+Test samples: 735
+Cutoff date: 2015-01-01
